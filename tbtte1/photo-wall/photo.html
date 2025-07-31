@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Our Sweet Photo Wall</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+    rel="stylesheet"
+  />
+  <link
+    href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/css/lightbox.min.css"
+    rel="stylesheet"
+  />
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      font-family: 'Raleway', sans-serif;
+      background-color: #f7f7f7;
+    }
+
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 1000;
+    }
+
+    main {
+      flex: 1 0 auto;
+      padding-top: 70px; /* Hauteur navbar */
+      padding-bottom: 70px; /* Hauteur footer */
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    footer {
+      flex-shrink: 0;
+      background-color: #222;
+      color: white;
+      padding: 20px;
+      border-top: 4px solid #0d6efd;
+      text-align: center;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      z-index: 1000;
+    }
+
+    .photo-wall img {
+      width: 100%;
+      height: 250px;
+      object-fit: cover;
+      border-radius: 12px;
+      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+      transition: transform 0.3s ease;
+      cursor: pointer;
+    }
+
+    .photo-wall img:hover {
+      transform: scale(1.05);
+      box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Conteneur des boutons sur chaque image */
+    .btn-group-overlay {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .delete-btn,
+    .download-btn {
+      background-color: rgba(220, 53, 69, 0.85);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      transition: background-color 0.3s ease;
+    }
+
+    .delete-btn:hover {
+      background-color: rgba(180, 30, 45, 0.95);
+    }
+
+    .download-btn {
+      background-color: rgba(40, 167, 69, 0.85);
+      text-decoration: none;
+    }
+
+    .download-btn:hover {
+      background-color: rgba(30, 130, 50, 0.95);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav
+      class="navbar navbar-expand-lg navbar-dark bg-primary px-4 shadow-sm"
+    >
+      <a class="navbar-brand" href="../index.html"><strong>The best thing to eat</strong></a>
+      <button
+        class="navbar-toggler"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#navbarNav"
+        aria-controls="navbarNav"
+        aria-expanded="false"
+        aria-label="Toggle navigation"
+      >
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+        <ul class="navbar-nav gap-3">
+          <li class="nav-item"><a class="nav-link" href="../index.html">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="../presentation/presentation.html">Welcome</a></li>
+        </ul>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1 class="text-center mb-5">Our Sweet Photo Wall</h1>
+    <div
+      class="container my-5 d-flex justify-content-center"
+    >
+      <div
+        class="p-4 rounded-4 shadow"
+        style="background: #fff; border: 2px solid #0d6efd; max-width: 400px; width: 100%;"
+      >
+        <h2 class="text-center mb-4" style="color: #0d6efd">Ajouter une photo</h2>
+        <input
+          type="file"
+          id="fileInput"
+          class="form-control mb-3 border-primary"
+          accept="image/*"
+          multiple
+        />
+        <button class="btn btn-primary w-100 rounded-pill mb-2" id="uploadBtn">
+          Uploader
+        </button>
+        <div id="uploadStatus" class="mt-2 text-success fw-bold text-center"></div>
+      </div>
+    </div>
+    <div class="row photo-wall g-4" id="wall"></div>
+  </main>
+
+  <footer>
+    &copy; 2025 Camille & Manon – All Love Reserved ❤️
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      const firebaseConfig = {
+        apiKey: "AIzaSyCHhI6UFcuHNVmdMPPROk67GbC9Ip5clRo",
+        authDomain: "tbtte-ba5ee.firebaseapp.com",
+        databaseURL:
+          "https://tbtte-ba5ee-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "tbtte-ba5ee",
+        storageBucket: "tbtte-ba5ee.appspot.com",
+        messagingSenderId: "376417053557",
+        appId: "1:376417053557:web:ad0a3e23af72a2c350013c",
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.database();
+      const cloudName = "dz70ajk0x";
+      const uploadPreset = "galerie";
+
+      const fileInput = document.getElementById("fileInput");
+      const uploadBtn = document.getElementById("uploadBtn");
+      const uploadStatus = document.getElementById("uploadStatus");
+      const wall = document.getElementById("wall");
+
+      uploadBtn.addEventListener("click", async () => {
+        const files = fileInput.files;
+        if (!files.length) return alert("Choisis au moins une image !");
+
+        uploadStatus.textContent = "Envoi en cours...";
+        let successCount = 0;
+
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("upload_preset", uploadPreset);
+
+          try {
+            const res = await fetch(
+              `https://api.cloudinary.com/v1_1/${cloudName}/upload`,
+              {
+                method: "POST",
+                body: formData,
+              }
+            );
+            const data = await res.json();
+            if (data.secure_url) {
+              await db.ref("images").push({ url: data.secure_url });
+              successCount++;
+            }
+          } catch (e) {
+            console.error("Erreur Cloudinary :", e);
+          }
+        }
+
+        uploadStatus.textContent = `${successCount} image(s) envoyée(s) !`;
+        fileInput.value = "";
+        setTimeout(() => (uploadStatus.textContent = ""), 3000);
+      });
+
+      // Affiche les images depuis Firebase
+      db.ref("images").on("value", (snapshot) => {
+        wall.innerHTML = "";
+        const images = snapshot.val();
+
+        for (const key in images) {
+          const url = images[key].url;
+          const col = document.createElement("div");
+          col.className = "col-6 col-md-4 col-lg-3 position-relative";
+
+          col.innerHTML = `
+            <a href="${url}" data-lightbox="galerie">
+              <img src="${url}" alt="photo" />
+            </a>
+            <div class="btn-group-overlay">
+              <button class="delete-btn" title="Supprimer" data-key="${key}">
+                <i class="bi bi-trash-fill"></i>
+              </button>
+              <a href="${url}" download class="download-btn" title="Télécharger">
+                <i class="bi bi-download"></i>
+              </a>
+            </div>
+          `;
+
+          col.querySelector(".delete-btn").onclick = () => {
+            db.ref("images").child(key).remove();
+          };
+
+          wall.prepend(col);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
